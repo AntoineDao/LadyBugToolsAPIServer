@@ -4,7 +4,7 @@ info:
   description: "An API definition to send and receive LadybugTools objects"
   version: "0.0.0"
   title: "LadybugTools API"
-host: "api.ladybug-tools.io"
+host: "localhost:8080"
 basePath: "/api"
 schemes:
 - "http"
