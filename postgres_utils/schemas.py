@@ -11,6 +11,8 @@ pf_precision = 3
 
 # Declarative base import
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -99,14 +101,13 @@ class SurfaceGroupsJoinHoneybeeSurfaces(Base):
 
 class GridPoint(Base):
     __tablename__ = 'grid_points'
-
-   id = Column(UUID, primary_key=True, nullable=False)
-   x = Column(Float(precision=pf_precision), nullable=False)
-   y = Column(Float(precision=pf_precision), nullable=False)
-   z = Column(Float(precision=pf_precision), nullable=False)
-   vx = Column(Float(precision=pf_precision), nullable=False)
-   vy = Column(Float(precision=pf_precision), nullable=False)
-   vz = Column(Float(precision=pf_precision), nullable=False)
+    id = Column(UUID, primary_key=True, nullable=False)
+    x = Column(Float(precision=pf_precision), nullable=False)
+    y = Column(Float(precision=pf_precision), nullable=False)
+    z = Column(Float(precision=pf_precision), nullable=False)
+    vx = Column(Float(precision=pf_precision), nullable=False)
+    vy = Column(Float(precision=pf_precision), nullable=False)
+    vz = Column(Float(precision=pf_precision), nullable=False)
 
 class AnalysisGrid(Base):
     __tablename__ = 'analysis_grids'
@@ -149,7 +150,7 @@ class EPWData(Base):
 
     id = Column(Integer, primary_key=True)
     epw = Column(UUID, ForeignKey('epws.id'), nullable=False)
-    date_time = Column(ateTime, nullable=False)
+    date_time = Column(DateTime, nullable=False)
     years = Column(Integer)
     dry_bulb_temperature = Column(Float(precision=2))
     dew_point_temperature = Column(Float(precision=2))
@@ -192,7 +193,7 @@ class WeaData(Base):
 
     id = Column(Integer, primary_key=True)
     wea = Column(UUID, ForeignKey('weas.id'), nullable=False)
-    date_time = Column(ateTime, nullable=False)
+    date_time = Column(DateTime, nullable=False)
     direct_normal_radiation = Column(Float(precision=2))
     diffuse_horizontal_radiation = Column(Float(precision=2))
 
@@ -226,11 +227,11 @@ class RecipeBase(enum.Enum):
 class Simulation(Base):
     __tablename__ = 'simulations'
 
-   id = Column(UUID, primary_key=True)
-   type = Column(Enum(RecipeTypes), nullable=False)
-   base = Column(Enum(RecipeBase), nullable=False)
-   status = Column(String)
-   surfaces = Column(UUID, ForeignKey('surface_groups.id'))
+    id = Column(UUID, primary_key=True)
+    type = Column(Enum(RecipeTypes), nullable=False)
+    base = Column(Enum(RecipeBase), nullable=False)
+    status = Column(String)
+    surfaces = Column(UUID, ForeignKey('surface_groups.id'))
 
 class SimulationJoinAnalysisGrid(Base):
     __tablename__ = 'simulation_join_analysis_grid'
