@@ -2,7 +2,7 @@
 language: python
 python:
   - "3.6"
-  - "d.7-dev"
+  - "3.7-dev"
   #- "3.5-dev" # 3.5 development branch
   #- "nightly" # points to the latest development branch e.g. 3.6-dev
 # command to install dependencies

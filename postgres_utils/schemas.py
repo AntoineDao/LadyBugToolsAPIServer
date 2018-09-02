@@ -12,7 +12,7 @@ pf_precision = 3
 # Declarative base import
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 Base = declarative_base()
 
@@ -65,30 +65,61 @@ class AnalysisSurface(Base):
     __tablename__ = 'analysis_surfaces'
 
     id = Column(UUID, primary_key=True, nullable=False)
-    vertices = Column(UUID, ForeignKey('surface_vertices.id'), nullable=False)
+    vertices_id = Column(UUID, ForeignKey('surface_vertices.id'), nullable=False)
     surface_name = Column(String)
     surface_state_name = Column(String, nullable=False)
     type = Column(Enum(SurfaceTypes))
-    radiance_material = Column(UUID, ForeignKey('materials.id'), nullable=False)
+    radiance_material_id = Column(UUID, ForeignKey('materials.id'), nullable=False)
+
+    material = relationship('Material', backref='analysis_surfaces')
+    surface_vertices = relationship('SurfaceVertices', backref='analysis_surfaces')
+
+class SurfaceState(Base):
+    __tablename__ = 'surface_states'
+
+    id = Column(UUID, primary_key=True, nullable=False)
+    name = Column(String, nullable=False)
+    surface_type = Column(Enum(SurfaceTypes))
+    radiance_material_id = Column(UUID, ForeignKey('materials.id'), nullable=False)
+    honeybee_surface_id = Column(UUID, ForeignKey('honeybee_surfaces.id'), nullable=False)
+
+    material = relationship('Material', backref='surface_state')
 
 class HoneybeeSurface(Base):
     __tablename__ = 'honeybee_surfaces'
 
     id = Column(UUID, primary_key=True, nullable=False)
-    parent_surface = Column(UUID, ForeignKey('analysis_surfaces.id'), nullable=False)
+    analysis_surface_id = Column(UUID, ForeignKey('analysis_surfaces.id'), nullable=False)
 
-class HoneybeeChildSurface(Base):
-    __tablename__ = 'honeybee_child_surfaces'
+    analysis_surface = relationship('AnalysisSurface', backref='honeybee_surface')
+    states = relationship('SurfaceState', backref='honeybee_surface')
 
-    id = Column(UUID, primary_key=True)
-    parent_id = Column(UUID, ForeignKey('honeybee_surfaces.id'), nullable=False)
-    child_id = Column(UUID, ForeignKey('surface_vertices.id'), nullable=False)
+# class HoneybeeParentSurface(Base):
+#     __tablename__ = 'honeybee_parent_surfaces'
+#
+#     id = Column(UUID, primary_key=True, nullable=False)
+#     parent_surface_id = Column(UUID, ForeignKey('honeybee_surfaces.id'), nullable=False)
+#
+#     parent = relationship('AnalysisSurface', backref='honeybee_surface')
+#     children = relationship('AnalysisSurface', secondary='honeybee_child_surfaces')
+#     surface_group = relationship('SurfaceGroup', secondary='surface_groups_join_honeybee_surfaces')
+#
+# class HoneybeeChildSurface(Base):
+#     __tablename__ = 'honeybee_child_surfaces'
+#
+#     id = Column(UUID, primary_key=True)
+#     parent_id = Column(UUID, ForeignKey('honeybee_parent_surfaces.id'), nullable=False)
+#     child_id = Column(UUID, ForeignKey('honeybee_surfaces.id'), nullable=False)
+#
+#     analysis_surface = relationship('HoneybeeSurface', backref='honeybee_child_surface')
 
-class SurfaceGroups(Base):
+class SurfaceGroup(Base):
     __tablename__ = 'surface_groups'
     id = Column(UUID, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(String)
+
+    honeybee_surfaces = relationship('HoneybeeSurface', secondary='surface_groups_join_honeybee_surfaces')
 
 class SurfaceGroupsJoinHoneybeeSurfaces(Base):
     __tablename__ = 'surface_groups_join_honeybee_surfaces'
@@ -109,11 +140,16 @@ class GridPoint(Base):
     vy = Column(Float(precision=pf_precision), nullable=False)
     vz = Column(Float(precision=pf_precision), nullable=False)
 
+    analysis_grid = relationship('AnalysisGrid', secondary='analysis_grid_join_point')
+
 class AnalysisGrid(Base):
     __tablename__ = 'analysis_grids'
 
     id = Column(UUID, primary_key=True, nullable=False)
     name = Column(String)
+
+    analysis_points = relationship('GridPoint', secondary='analysis_grid_join_point')
+    window_groups = relationship('HoneybeeSurface', secondary='window_groups')
 
 class AnalysisGridJoinPoint(Base):
     __tablename__ = 'analysis_grid_join_point'
@@ -128,7 +164,7 @@ class WindowGroup(Base):
     id = Column(UUID, primary_key=True)
     name = Column(String, nullable=False)
     analysis_grid = Column(UUID, ForeignKey('analysis_grids.id'))
-    honeybee_child_surface = Column(UUID, ForeignKey('honeybee_child_surfaces.id'))
+    honeybee_surface = Column(UUID, ForeignKey('honeybee_surfaces.id'))
 
 # Weather and Location
 class EPW(Base):
@@ -144,12 +180,15 @@ class EPW(Base):
     time_zone = Column(String)
     elevation = Column(Float(precision=2), nullable=False)
 
+    wea = relationship('WEA', backref=backref('epw', uselist=False))
+    data_point = relationship('EPWData', backref='epw')
+
 class EPWData(Base):
 
     __tablename__ = 'epw_data'
 
     id = Column(Integer, primary_key=True)
-    epw = Column(UUID, ForeignKey('epws.id'), nullable=False)
+    epw_id = Column(UUID, ForeignKey('epws.id'), nullable=False)
     date_time = Column(DateTime, nullable=False)
     years = Column(Integer)
     dry_bulb_temperature = Column(Float(precision=2))
@@ -182,17 +221,20 @@ class EPWData(Base):
     liquid_precipitation_depth = Column(Float(precision=2))
     liquid_precipitation_quantity = Column(Float(precision=2))
 
-class Wea(Base):
+class WEA(Base):
     __tablename__ = 'weas'
 
     id = Column(UUID, primary_key=True)
-    epw = Column(UUID, ForeignKey('epws.id'), nullable=False)
+    epw_id = Column(UUID, ForeignKey('epws.id'), nullable=False)
 
-class WeaData(Base):
+    sky_mtx = relationship('SkyMatrix', backref=backref('wea', uselist=False))
+    data_point = relationship('WEAData', backref='wea')
+
+class WEAData(Base):
     __tablename__ = 'wea_data'
 
     id = Column(Integer, primary_key=True)
-    wea = Column(UUID, ForeignKey('weas.id'), nullable=False)
+    wea_id = Column(UUID, ForeignKey('weas.id'), nullable=False)
     date_time = Column(DateTime, nullable=False)
     direct_normal_radiation = Column(Float(precision=2))
     diffuse_horizontal_radiation = Column(Float(precision=2))
@@ -201,7 +243,7 @@ class SkyMatrix(Base):
     __tablename__ = 'sky_matrices'
 
     id = Column(UUID, primary_key=True)
-    wea = Column(UUID, ForeignKey('weas.id'), nullable=False)
+    wea_id = Column(UUID, ForeignKey('weas.id'), nullable=False)
     sky_density = Column(Integer, nullable=False)
     north = Column(Float(precision=2), nullable=False)
     hoys = Column(ARRAY(Integer), nullable=False)
@@ -233,6 +275,9 @@ class Simulation(Base):
     status = Column(String)
     surfaces = Column(UUID, ForeignKey('surface_groups.id'))
 
+    surface_group = relationship('SurfaceGroup', backref='simulation')
+    analysis_grids = relationship('AnalysisGrid', secondary='simulation_join_analysis_grid')
+
 class SimulationJoinAnalysisGrid(Base):
     __tablename__ = 'simulation_join_analysis_grid'
 
@@ -244,8 +289,10 @@ class DaylightFactorRecipe(Base):
     __tablename__ = 'daylight_factor_recipes'
 
     id = Column(UUID, primary_key=True)
-    simulation = Column(UUID, ForeignKey('simulations.id'), nullable=False)
+    simulation_id = Column(UUID, ForeignKey('simulations.id'), nullable=False)
     radiance_parameters = Column(JSONB, nullable=False)
+
+    simulation = relationship('Simulation', backref='dalight_factor_recipe')
 
 class AnnualRecipe(Base):
     __tablename__ = 'annual_recipes'
@@ -254,7 +301,10 @@ class AnnualRecipe(Base):
     simulation = Column(UUID, ForeignKey('simulations.id'), nullable=False)
     radiance_parameters = Column(JSONB, nullable=False)
     analysis_type = Column(Integer, nullable=False)
-    sky_mtx = Column(UUID, ForeignKey('sky_matrices.id'), nullable=False)
+    sky_mtx_id = Column(UUID, ForeignKey('sky_matrices.id'), nullable=False)
+
+    sky_mtx = relationship('SkyMatrix', backref='annual_recipes')
+    simulation = relationship('Simulation', backref='annual_recipe')
 
 class RadiationRecipe(Base):
     __tablename__ = 'radiation_recipes'
@@ -264,14 +314,20 @@ class RadiationRecipe(Base):
     radiance_parameters = Column(JSONB, nullable=False)
     sky_mtx = Column(UUID, ForeignKey('sky_matrices.id'), nullable=False)
 
+    sky_mtx = relationship('SkyMatrix', backref='radiation_recipes')
+    simulation = relationship('Simulation', backref='radiation_recipe')
+
 class DirectReflectionRecipe(Base):
     __tablename__ = 'direct_reflection_recipes'
 
     id = Column(UUID, primary_key=True)
-    epw = Column(UUID, ForeignKey('epws.id'), nullable=False)
+    epw_id = Column(UUID, ForeignKey('epws.id'), nullable=False)
     simulation = Column(UUID, ForeignKey('simulations.id'), nullable=False)
     latitude = Column(Float(precision=2), nullable=False)
     longitude = Column(Float(precision=2), nullable=False)
+
+    epw = relationship('EPW', backref='direct_reflection_recipes')
+    simulation = relationship('Simulation', backref='direct_reflection_recipe')
 
 class SolarAccessRecipe(Base):
     __tablename__ = 'solar_access_recipes'
@@ -283,6 +339,9 @@ class SolarAccessRecipe(Base):
     longitude = Column(Float(precision=2), nullable=False)
     hoys = Column(ARRAY(Integer), nullable=False)
 
+    epw = relationship('EPW', backref='solar_access_recipes')
+    simulation = relationship('Simulation', backref='solar_access_recipe')
+
 class ThreePhaseRecipe(Base):
     __tablename__ = 'three_phase_recipes'
 
@@ -292,6 +351,9 @@ class ThreePhaseRecipe(Base):
     analysis_type = Column(Integer, nullable=False)
     daylight_mtx_parameters = Column(JSONB, nullable=False)
     sky_mtx = Column(UUID, ForeignKey('sky_matrices.id'), nullable=False)
+
+    sky_mtx = relationship('SkyMatrix', backref='three_phase_recipes')
+    simulation = relationship('Simulation', backref='three_phase_recipe')
 
 class FivePhaseRecipe(Base):
     __tablename__ = 'five_phase_recipes'
@@ -303,6 +365,8 @@ class FivePhaseRecipe(Base):
     daylight_mtx_parameters = Column(JSONB, nullable=False)
     sky_mtx = Column(UUID, ForeignKey('sky_matrices.id'), nullable=False)
 
+    sky_mtx = relationship('SkyMatrix', backref='five_phase_recipes')
+    simulation = relationship('Simulation', backref='five_phase_recipe')
 
 # GridBased Data Table
 
@@ -316,11 +380,16 @@ class GridBasedData(Base):
     epw_date_time = Column(DateTime, nullable=False)
     point_id = Column(UUID, ForeignKey('grid_points.id'), nullable=False)
     simulation_id = Column(UUID, ForeignKey('simulations.id'), nullable=False)
-    window_group_id = Column(UUID, ForeignKey('window_groups.id'), nullable=False)
-    surface_id = Column(UUID, ForeignKey('analysis_surfaces.id'), nullable=False)
+    state_id = Column(UUID, ForeignKey('window_groups.id'), nullable=False)
+    honeybee_surface_id = Column(UUID, ForeignKey('analysis_surfaces.id'), nullable=False)
     unit = Column(String, nullable=False)
     is_direct = Column(Boolean, nullable=False)
     sky_total = Column(Float(precision=2))
     sky_direct = Column(Float(precision=2))
     sun = Column(Float(precision=2))
     total = Column(Float(precision=2))
+
+    point = relationship('GridPoint', backref='datums')
+    simulation = relationship('Simulation', backref='datums')
+    state = relationship('SurfaceState', backref='datums')
+    honeybee_surface = relationship('HoneybeeSurface', backref='datums')
