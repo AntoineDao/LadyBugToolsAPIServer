@@ -11,6 +11,7 @@ from swagger_server.models.analysis_type import AnalysisType
 from swagger_server.models.annual_grid_based_schema import AnnualGridBasedSchema
 from swagger_server.models.bsdf_material_schema import BSDFMaterialSchema
 from swagger_server.models.data_collection_schema import DataCollectionSchema
+from swagger_server.models.data_header_schema import DataHeaderSchema
 from swagger_server.models.data_type_schema import DataTypeSchema
 from swagger_server.models.daylight_factor_grid_based_schema import DaylightFactorGridBasedSchema
 from swagger_server.models.direct_reflection_grid_based_schema import DirectReflectionGridBasedSchema
@@ -19,6 +20,7 @@ from swagger_server.models.epw_schema import EpwSchema
 from swagger_server.models.error_model_schema import ErrorModelSchema
 from swagger_server.models.five_phasel_grid_based_schema import FivePhaselGridBasedSchema
 from swagger_server.models.grid_based_recipe_schema import GridBasedRecipeSchema
+from swagger_server.models.grid_status_schema import GridStatusSchema
 from swagger_server.models.hb_surface_schema import HBSurfaceSchema
 from swagger_server.models.hoy_list_schema import HoyListSchema
 from swagger_server.models.hoy_schema import HoySchema
@@ -40,6 +42,7 @@ from swagger_server.models.point_in_time_grid_based_schema import PointInTimeGri
 from swagger_server.models.point_schema import PointSchema
 from swagger_server.models.radiance_parameters import RadianceParameters
 from swagger_server.models.radiation_grid_based_schema import RadiationGridBasedSchema
+from swagger_server.models.simulation_status_schema import SimulationStatusSchema
 from swagger_server.models.sky_mtx_schema import SkyMtxSchema
 from swagger_server.models.sky_schema import SkySchema
 from swagger_server.models.solar_access_grid_based_schema import SolarAccessGridBasedSchema
@@ -53,5 +56,4 @@ from swagger_server.models.translucent_material_schema import TranslucentMateria
 from swagger_server.models.uuid_schema import UuidSchema
 from swagger_server.models.vector_schema import VectorSchema
 from swagger_server.models.vertex_schema import VertexSchema
-from swagger_server.models.vertex_schema_inner import VertexSchemaInner
 from swagger_server.models.wea_schema import WeaSchema

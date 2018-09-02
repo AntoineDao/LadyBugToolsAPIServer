@@ -6,6 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server.models.data_header_schema import DataHeaderSchema  # noqa: F401,E501
 from swagger_server.models.data_type_schema import DataTypeSchema  # noqa: F401,E501
 from swagger_server import util
 
@@ -16,16 +17,16 @@ class DataCollectionSchema(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, header: object=None, data: List[DataTypeSchema]=None):  # noqa: E501
+    def __init__(self, header: DataHeaderSchema=None, data: List[DataTypeSchema]=None):  # noqa: E501
         """DataCollectionSchema - a model defined in Swagger
 
         :param header: The header of this DataCollectionSchema.  # noqa: E501
-        :type header: object
+        :type header: DataHeaderSchema
         :param data: The data of this DataCollectionSchema.  # noqa: E501
         :type data: List[DataTypeSchema]
         """
         self.swagger_types = {
-            'header': object,
+            'header': DataHeaderSchema,
             'data': List[DataTypeSchema]
         }
 
@@ -49,22 +50,22 @@ class DataCollectionSchema(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def header(self) -> object:
+    def header(self) -> DataHeaderSchema:
         """Gets the header of this DataCollectionSchema.
 
 
         :return: The header of this DataCollectionSchema.
-        :rtype: object
+        :rtype: DataHeaderSchema
         """
         return self._header
 
     @header.setter
-    def header(self, header: object):
+    def header(self, header: DataHeaderSchema):
         """Sets the header of this DataCollectionSchema.
 
 
         :param header: The header of this DataCollectionSchema.
-        :type header: object
+        :type header: DataHeaderSchema
         """
         if header is None:
             raise ValueError("Invalid value for `header`, must not be `None`")  # noqa: E501

@@ -2,9 +2,9 @@
 swagger: "2.0"
 info:
   description: "An API definition to send and receive LadybugTools objects"
-  version: "0.0.0"
+  version: "0.0.2"
   title: "LadybugTools API"
-host: "localhost:8080"
+host: "api.ladybug-tools.io"
 basePath: "/api"
 schemes:
 - "http"
@@ -22,16 +22,16 @@ paths:
         description: "The name of the grid"
         required: false
         type: "string"
-      - name: "min_points"
+      - name: "simulation_status"
         in: "query"
-        description: "The minimum amount of points the analysis grid has"
+        description: "Status of the simulation for this grid"
         required: false
-        type: "integer"
-      - name: "max_points"
-        in: "query"
-        description: "The maximum amount of points the analysis grid has"
-        required: false
-        type: "integer"
+        type: "string"
+        enum:
+        - "waiting"
+        - "running"
+        - "complete"
+        - "failed"
       responses:
         200:
           description: "A list of analysis_grid uuids matching the query parameters"
@@ -818,6 +818,54 @@ paths:
           schema:
             $ref: "#/definitions/ErrorModelSchema"
       x-swagger-router-controller: "swagger_server.controllers.get_and_delete_recipes_controller"
+  /recipe/{uuid}/run:
+    get:
+      tags:
+      - "Simulation Management"
+      summary: "Review the status of a simulation"
+      description: "Check whether a simulation is running, scheduled, failed and what\
+        \ percent complete it is"
+      operationId: "recipe_uuid_run_get"
+      parameters:
+      - name: "uuid"
+        in: "path"
+        description: "The unique identifier of the analysis_grid."
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Simulation status object"
+          schema:
+            $ref: "#/definitions/SimulationStatusSchema"
+        404:
+          description: "An object with that uuid does not exist"
+        default:
+          description: "error payload"
+          schema:
+            $ref: "#/definitions/ErrorModelSchema"
+      x-swagger-router-controller: "swagger_server.controllers.simulation_management_controller"
+    post:
+      tags:
+      - "Simulation Management"
+      summary: "Run the simulation job for a given recipe"
+      description: "Returns an ok status message if succesful"
+      operationId: "recipe_uuid_run_post"
+      parameters:
+      - name: "uuid"
+        in: "path"
+        description: "The unique identifier of the analysis_grid."
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Simulation succesfully started"
+        500:
+          description: "Simulation could not be started"
+        default:
+          description: "error payload"
+          schema:
+            $ref: "#/definitions/ErrorModelSchema"
+      x-swagger-router-controller: "swagger_server.controllers.simulation_management_controller"
   /recipe/annual/gridbased:
     post:
       tags:
@@ -1623,8 +1671,12 @@ definitions:
             modifier: "void"
         uuid: "uuid"
       vertices:
-      - ""
-      - ""
+      - x: 6.02745618307040320615897144307382404804229736328125
+        y: 1.46581298050294517310021547018550336360931396484375
+        z: 5.962133916683182377482808078639209270477294921875
+      - x: 6.02745618307040320615897144307382404804229736328125
+        y: 1.46581298050294517310021547018550336360931396484375
+        z: 5.962133916683182377482808078639209270477294921875
       name: "name"
       surface_states:
       - surface_properties:
@@ -1640,7 +1692,7 @@ definitions:
               specularity: 0.01
               roughness: 0.03
               modifier: "void"
-          surface_type: 3.61647370984224192369538286584429442882537841796875
+          surface_type: 3.382425993979996992067071914789266884326934814453125
         name: "name"
       - surface_properties:
           rad_properties:
@@ -1655,7 +1707,7 @@ definitions:
               specularity: 0.01
               roughness: 0.03
               modifier: "void"
-          surface_type: 3.61647370984224192369538286584429442882537841796875
+          surface_type: 3.382425993979996992067071914789266884326934814453125
         name: "name"
       surface_type: 0.48049691427660690123957465402781963348388671875
   AnalysisType:
@@ -1747,8 +1799,7 @@ definitions:
     - "header"
     properties:
       header:
-        type: "object"
-        properties: {}
+        $ref: "#/definitions/DataHeaderSchema"
       data:
         type: "array"
         items:
@@ -1756,14 +1807,46 @@ definitions:
     example:
       data:
       - standard: "SI"
-        datetime: "datetime"
+        datetime: "2000-01-23T04:56:07.000+00:00"
         nickname: "nickname"
         value: 5.962133916683182377482808078639209270477294921875
       - standard: "SI"
-        datetime: "datetime"
+        datetime: "2000-01-23T04:56:07.000+00:00"
         nickname: "nickname"
         value: 5.962133916683182377482808078639209270477294921875
-      header: "{}"
+      header:
+        unit: "unit"
+        data_type: "data_type"
+        location:
+          elevation: 1.46581298050294517310021547018550336360931396484375
+          city: "city"
+          latitude: -75.5850925717017929628127603791654109954833984375
+          time_zone: "time_zone"
+          longitude: 36.98842259053452607986400835216045379638671875
+        analysis_period: "analysis_period"
+  DataHeaderSchema:
+    properties:
+      location:
+        $ref: "#/definitions/EpwLocationSchema"
+      data_type:
+        type: "string"
+        description: "type of data, temperature for example"
+      unit:
+        type: "string"
+        description: "data type unit"
+      analysis_period:
+        type: "string"
+        description: "a ladybug analysis period string"
+    example:
+      unit: "unit"
+      data_type: "data_type"
+      location:
+        elevation: 1.46581298050294517310021547018550336360931396484375
+        city: "city"
+        latitude: -75.5850925717017929628127603791654109954833984375
+        time_zone: "time_zone"
+        longitude: 36.98842259053452607986400835216045379638671875
+      analysis_period: "analysis_period"
   DataTypeSchema:
     required:
     - "datetime"
@@ -1775,6 +1858,7 @@ definitions:
         type: "number"
       datetime:
         type: "string"
+        format: "date-time"
       standard:
         type: "string"
         enum:
@@ -1784,7 +1868,7 @@ definitions:
         type: "string"
     example:
       standard: "SI"
-      datetime: "datetime"
+      datetime: "2000-01-23T04:56:07.000+00:00"
       nickname: "nickname"
       value: 5.962133916683182377482808078639209270477294921875
   DaylightFactorGridBasedSchema:
@@ -2054,8 +2138,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2071,7 +2159,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2086,7 +2174,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -2105,8 +2193,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2122,7 +2214,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2137,7 +2229,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -2155,8 +2247,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2172,7 +2268,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2187,7 +2283,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -2206,8 +2302,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2223,7 +2323,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2238,7 +2338,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -2257,8 +2357,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2274,7 +2378,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2289,7 +2393,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -2307,8 +2411,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2324,7 +2432,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2339,7 +2447,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       rad_parameters: "-ab 5 -aa 0.05 -ar 128"
@@ -2622,8 +2730,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2639,7 +2751,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2654,7 +2766,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -2673,8 +2785,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2690,7 +2806,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2705,7 +2821,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -2723,8 +2839,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2740,7 +2860,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2755,7 +2875,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -2774,8 +2894,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2791,7 +2915,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2806,7 +2930,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -2825,8 +2949,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2842,7 +2970,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2857,7 +2985,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -2875,8 +3003,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -2892,7 +3024,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -2907,7 +3039,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       location:
@@ -2975,24 +3107,42 @@ definitions:
       data:
       - data:
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
-        header: "{}"
+        header:
+          unit: "unit"
+          data_type: "data_type"
+          location:
+            elevation: 1.46581298050294517310021547018550336360931396484375
+            city: "city"
+            latitude: -75.5850925717017929628127603791654109954833984375
+            time_zone: "time_zone"
+            longitude: 36.98842259053452607986400835216045379638671875
+          analysis_period: "analysis_period"
       - data:
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
-        header: "{}"
+        header:
+          unit: "unit"
+          data_type: "data_type"
+          location:
+            elevation: 1.46581298050294517310021547018550336360931396484375
+            city: "city"
+            latitude: -75.5850925717017929628127603791654109954833984375
+            time_zone: "time_zone"
+            longitude: 36.98842259053452607986400835216045379638671875
+          analysis_period: "analysis_period"
       header:
       - "header"
       - "header"
@@ -3298,8 +3448,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -3315,7 +3469,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -3330,7 +3484,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -3349,8 +3503,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -3366,7 +3524,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -3381,7 +3539,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -3399,8 +3557,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -3416,7 +3578,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -3431,7 +3593,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -3450,8 +3612,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -3467,7 +3633,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -3482,7 +3648,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -3501,8 +3667,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -3518,7 +3688,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -3533,7 +3703,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -3551,8 +3721,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -3568,7 +3742,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -3583,7 +3757,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       view_mtx_parameters: "-ab 5 -aa 0.05 -ar 128"
@@ -3595,14 +3769,23 @@ definitions:
           diffuse_horizontal_radiation:
             data:
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
-            header: "{}"
+            header:
+              unit: "unit"
+              data_type: "data_type"
+              location:
+                elevation: 1.46581298050294517310021547018550336360931396484375
+                city: "city"
+                latitude: -75.5850925717017929628127603791654109954833984375
+                time_zone: "time_zone"
+                longitude: 36.98842259053452607986400835216045379638671875
+              analysis_period: "analysis_period"
           header:
           - "header"
           - "header"
@@ -3615,14 +3798,23 @@ definitions:
           direct_normal_radiation:
             data:
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
-            header: "{}"
+            header:
+              unit: "unit"
+              data_type: "data_type"
+              location:
+                elevation: 1.46581298050294517310021547018550336360931396484375
+                city: "city"
+                latitude: -75.5850925717017929628127603791654109954833984375
+                time_zone: "time_zone"
+                longitude: 36.98842259053452607986400835216045379638671875
+              analysis_period: "analysis_period"
           location:
             elevation: 1.46581298050294517310021547018550336360931396484375
             city: "city"
@@ -3658,6 +3850,21 @@ definitions:
         - "list of surfaces"
         analysis_type: 2
         rad_parameters: "-ab 5 -aa 0.05 -ar 128"
+  GridStatusSchema:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      status:
+        type: "string"
+        enum:
+        - "waiting"
+        - "running"
+        - "complete"
+        - "failed"
+    example:
+      id: "id"
+      status: "waiting"
   HBSurfaceSchema:
     required:
     - "parent_surface"
@@ -3685,8 +3892,12 @@ definitions:
               modifier: "void"
           uuid: "uuid"
         vertices:
-        - ""
-        - ""
+        - x: 6.02745618307040320615897144307382404804229736328125
+          y: 1.46581298050294517310021547018550336360931396484375
+          z: 5.962133916683182377482808078639209270477294921875
+        - x: 6.02745618307040320615897144307382404804229736328125
+          y: 1.46581298050294517310021547018550336360931396484375
+          z: 5.962133916683182377482808078639209270477294921875
         name: "name"
         surface_states:
         - surface_properties:
@@ -3702,7 +3913,7 @@ definitions:
                 specularity: 0.01
                 roughness: 0.03
                 modifier: "void"
-            surface_type: 3.61647370984224192369538286584429442882537841796875
+            surface_type: 3.382425993979996992067071914789266884326934814453125
           name: "name"
         - surface_properties:
             rad_properties:
@@ -3717,7 +3928,7 @@ definitions:
                 specularity: 0.01
                 roughness: 0.03
                 modifier: "void"
-            surface_type: 3.61647370984224192369538286584429442882537841796875
+            surface_type: 3.382425993979996992067071914789266884326934814453125
           name: "name"
         surface_type: 0.48049691427660690123957465402781963348388671875
       child_surfaces:
@@ -3736,8 +3947,12 @@ definitions:
               modifier: "void"
           uuid: "uuid"
         vertices:
-        - ""
-        - ""
+        - x: 6.02745618307040320615897144307382404804229736328125
+          y: 1.46581298050294517310021547018550336360931396484375
+          z: 5.962133916683182377482808078639209270477294921875
+        - x: 6.02745618307040320615897144307382404804229736328125
+          y: 1.46581298050294517310021547018550336360931396484375
+          z: 5.962133916683182377482808078639209270477294921875
         name: "name"
         surface_states:
         - surface_properties:
@@ -3753,7 +3968,7 @@ definitions:
                 specularity: 0.01
                 roughness: 0.03
                 modifier: "void"
-            surface_type: 3.61647370984224192369538286584429442882537841796875
+            surface_type: 3.382425993979996992067071914789266884326934814453125
           name: "name"
         - surface_properties:
             rad_properties:
@@ -3768,7 +3983,7 @@ definitions:
                 specularity: 0.01
                 roughness: 0.03
                 modifier: "void"
-            surface_type: 3.61647370984224192369538286584429442882537841796875
+            surface_type: 3.382425993979996992067071914789266884326934814453125
           name: "name"
         surface_type: 0.48049691427660690123957465402781963348388671875
       - rad_properties:
@@ -3786,8 +4001,12 @@ definitions:
               modifier: "void"
           uuid: "uuid"
         vertices:
-        - ""
-        - ""
+        - x: 6.02745618307040320615897144307382404804229736328125
+          y: 1.46581298050294517310021547018550336360931396484375
+          z: 5.962133916683182377482808078639209270477294921875
+        - x: 6.02745618307040320615897144307382404804229736328125
+          y: 1.46581298050294517310021547018550336360931396484375
+          z: 5.962133916683182377482808078639209270477294921875
         name: "name"
         surface_states:
         - surface_properties:
@@ -3803,7 +4022,7 @@ definitions:
                 specularity: 0.01
                 roughness: 0.03
                 modifier: "void"
-            surface_type: 3.61647370984224192369538286584429442882537841796875
+            surface_type: 3.382425993979996992067071914789266884326934814453125
           name: "name"
         - surface_properties:
             rad_properties:
@@ -3818,7 +4037,7 @@ definitions:
                 specularity: 0.01
                 roughness: 0.03
                 modifier: "void"
-            surface_type: 3.61647370984224192369538286584429442882537841796875
+            surface_type: 3.382425993979996992067071914789266884326934814453125
           name: "name"
         surface_type: 0.48049691427660690123957465402781963348388671875
   HoyListSchema:
@@ -4251,8 +4470,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4268,7 +4491,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4283,7 +4506,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -4302,8 +4525,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4319,7 +4546,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4334,7 +4561,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -4352,8 +4579,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4369,7 +4600,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4384,7 +4615,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -4403,8 +4634,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4420,7 +4655,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4435,7 +4670,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -4454,8 +4689,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4471,7 +4710,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4486,7 +4725,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -4504,8 +4743,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4521,7 +4764,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4536,7 +4779,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       analysis_type: {}
@@ -4833,8 +5076,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4850,7 +5097,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4865,7 +5112,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -4884,8 +5131,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4901,7 +5152,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4916,7 +5167,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -4934,8 +5185,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -4951,7 +5206,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -4966,7 +5221,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -4985,8 +5240,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5002,7 +5261,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5017,7 +5276,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -5036,8 +5295,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5053,7 +5316,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5068,7 +5331,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -5086,8 +5349,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5103,7 +5370,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5118,7 +5385,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       rad_parameters: "-ab 5 -aa 0.05 -ar 128"
@@ -5129,14 +5396,23 @@ definitions:
           diffuse_horizontal_radiation:
             data:
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
-            header: "{}"
+            header:
+              unit: "unit"
+              data_type: "data_type"
+              location:
+                elevation: 1.46581298050294517310021547018550336360931396484375
+                city: "city"
+                latitude: -75.5850925717017929628127603791654109954833984375
+                time_zone: "time_zone"
+                longitude: 36.98842259053452607986400835216045379638671875
+              analysis_period: "analysis_period"
           header:
           - "header"
           - "header"
@@ -5149,14 +5425,23 @@ definitions:
           direct_normal_radiation:
             data:
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
-            header: "{}"
+            header:
+              unit: "unit"
+              data_type: "data_type"
+              location:
+                elevation: 1.46581298050294517310021547018550336360931396484375
+                city: "city"
+                latitude: -75.5850925717017929628127603791654109954833984375
+                time_zone: "time_zone"
+                longitude: 36.98842259053452607986400835216045379638671875
+              analysis_period: "analysis_period"
           location:
             elevation: 1.46581298050294517310021547018550336360931396484375
             city: "city"
@@ -5168,6 +5453,57 @@ definitions:
         suffix: "suffix"
       id: "radiation"
       type: "gridbased"
+  SimulationStatusSchema:
+    type: "object"
+    required:
+    - "base"
+    - "id"
+    - "progress"
+    - "status"
+    - "type"
+    properties:
+      id:
+        type: "string"
+      type:
+        type: "string"
+        enum:
+        - "daylight_factor"
+        - "annual"
+        - "radiation"
+        - "direct_reflection"
+        - "five_phase"
+        - "point_in_time"
+        - "solar_access"
+        - "three_phase"
+      base:
+        type: "string"
+        enum:
+        - "gridbased"
+        - "imagebased"
+      status:
+        type: "string"
+        enum:
+        - "waiting"
+        - "running"
+        - "complete"
+        - "failed"
+      progress:
+        type: "number"
+      grids:
+        type: "array"
+        items:
+          $ref: "#/definitions/GridStatusSchema"
+    example:
+      progress: 0.80082819046101150206595775671303272247314453125
+      id: "id"
+      type: "daylight_factor"
+      grids:
+      - id: "id"
+        status: "waiting"
+      - id: "id"
+        status: "waiting"
+      base: "gridbased"
+      status: "waiting"
   SkyMtxSchema:
     required:
     - "hoys"
@@ -5202,14 +5538,23 @@ definitions:
         diffuse_horizontal_radiation:
           data:
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
-          header: "{}"
+          header:
+            unit: "unit"
+            data_type: "data_type"
+            location:
+              elevation: 1.46581298050294517310021547018550336360931396484375
+              city: "city"
+              latitude: -75.5850925717017929628127603791654109954833984375
+              time_zone: "time_zone"
+              longitude: 36.98842259053452607986400835216045379638671875
+            analysis_period: "analysis_period"
         header:
         - "header"
         - "header"
@@ -5222,14 +5567,23 @@ definitions:
         direct_normal_radiation:
           data:
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
-          header: "{}"
+          header:
+            unit: "unit"
+            data_type: "data_type"
+            location:
+              elevation: 1.46581298050294517310021547018550336360931396484375
+              city: "city"
+              latitude: -75.5850925717017929628127603791654109954833984375
+              time_zone: "time_zone"
+              longitude: 36.98842259053452607986400835216045379638671875
+            analysis_period: "analysis_period"
         location:
           elevation: 1.46581298050294517310021547018550336360931396484375
           city: "city"
@@ -5552,8 +5906,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5569,7 +5927,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5584,7 +5942,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -5603,8 +5961,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5620,7 +5982,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5635,7 +5997,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -5653,8 +6015,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5670,7 +6036,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5685,7 +6051,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -5704,8 +6070,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5721,7 +6091,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5736,7 +6106,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -5755,8 +6125,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5772,7 +6146,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5787,7 +6161,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -5805,8 +6179,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -5822,7 +6200,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -5837,7 +6215,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       location:
@@ -5948,7 +6326,7 @@ definitions:
           specularity: 0.01
           roughness: 0.03
           modifier: "void"
-      surface_type: 3.61647370984224192369538286584429442882537841796875
+      surface_type: 3.382425993979996992067071914789266884326934814453125
   SurfaceStateSchema:
     required:
     - "name"
@@ -5973,7 +6351,7 @@ definitions:
             specularity: 0.01
             roughness: 0.03
             modifier: "void"
-        surface_type: 3.61647370984224192369538286584429442882537841796875
+        surface_type: 3.382425993979996992067071914789266884326934814453125
       name: "name"
   ThreePhaselGridBasedSchema:
     required:
@@ -6251,8 +6629,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6268,7 +6650,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6283,7 +6665,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -6302,8 +6684,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6319,7 +6705,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6334,7 +6720,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -6352,8 +6738,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6369,7 +6759,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6384,7 +6774,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       - parent_surface:
@@ -6403,8 +6793,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6420,7 +6814,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6435,7 +6829,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -6454,8 +6848,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6471,7 +6869,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6486,7 +6884,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -6504,8 +6902,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6521,7 +6923,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6536,7 +6938,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       view_mtx_parameters: "-ab 5 -aa 0.05 -ar 128"
@@ -6548,14 +6950,23 @@ definitions:
           diffuse_horizontal_radiation:
             data:
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
-            header: "{}"
+            header:
+              unit: "unit"
+              data_type: "data_type"
+              location:
+                elevation: 1.46581298050294517310021547018550336360931396484375
+                city: "city"
+                latitude: -75.5850925717017929628127603791654109954833984375
+                time_zone: "time_zone"
+                longitude: 36.98842259053452607986400835216045379638671875
+              analysis_period: "analysis_period"
           header:
           - "header"
           - "header"
@@ -6568,14 +6979,23 @@ definitions:
           direct_normal_radiation:
             data:
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
             - standard: "SI"
-              datetime: "datetime"
+              datetime: "2000-01-23T04:56:07.000+00:00"
               nickname: "nickname"
               value: 5.962133916683182377482808078639209270477294921875
-            header: "{}"
+            header:
+              unit: "unit"
+              data_type: "data_type"
+              location:
+                elevation: 1.46581298050294517310021547018550336360931396484375
+                city: "city"
+                latitude: -75.5850925717017929628127603791654109954833984375
+                time_zone: "time_zone"
+                longitude: 36.98842259053452607986400835216045379638671875
+              analysis_period: "analysis_period"
           location:
             elevation: 1.46581298050294517310021547018550336360931396484375
             city: "city"
@@ -6651,9 +7071,21 @@ definitions:
       y: 5.63737665663332876420099637471139430999755859375
       z: 2.3021358869347654518833223846741020679473876953125
   VertexSchema:
-    type: "array"
-    items:
-      $ref: "#/definitions/VertexSchema_inner"
+    required:
+    - "x"
+    - "y"
+    - "z"
+    properties:
+      x:
+        type: "number"
+      y:
+        type: "number"
+      z:
+        type: "number"
+    example:
+      x: 6.02745618307040320615897144307382404804229736328125
+      y: 1.46581298050294517310021547018550336360931396484375
+      z: 5.962133916683182377482808078639209270477294921875
   WeaSchema:
     required:
     - "diffuse_horizontal_radiation"
@@ -6677,14 +7109,23 @@ definitions:
       diffuse_horizontal_radiation:
         data:
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
-        header: "{}"
+        header:
+          unit: "unit"
+          data_type: "data_type"
+          location:
+            elevation: 1.46581298050294517310021547018550336360931396484375
+            city: "city"
+            latitude: -75.5850925717017929628127603791654109954833984375
+            time_zone: "time_zone"
+            longitude: 36.98842259053452607986400835216045379638671875
+          analysis_period: "analysis_period"
       header:
       - "header"
       - "header"
@@ -6697,14 +7138,23 @@ definitions:
       direct_normal_radiation:
         data:
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
         - standard: "SI"
-          datetime: "datetime"
+          datetime: "2000-01-23T04:56:07.000+00:00"
           nickname: "nickname"
           value: 5.962133916683182377482808078639209270477294921875
-        header: "{}"
+        header:
+          unit: "unit"
+          data_type: "data_type"
+          location:
+            elevation: 1.46581298050294517310021547018550336360931396484375
+            city: "city"
+            latitude: -75.5850925717017929628127603791654109954833984375
+            time_zone: "time_zone"
+            longitude: 36.98842259053452607986400835216045379638671875
+          analysis_period: "analysis_period"
       location:
         elevation: 1.46581298050294517310021547018550336360931396484375
         city: "city"
@@ -6866,24 +7316,42 @@ definitions:
         data:
         - data:
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
-          header: "{}"
+          header:
+            unit: "unit"
+            data_type: "data_type"
+            location:
+              elevation: 1.46581298050294517310021547018550336360931396484375
+              city: "city"
+              latitude: -75.5850925717017929628127603791654109954833984375
+              time_zone: "time_zone"
+              longitude: 36.98842259053452607986400835216045379638671875
+            analysis_period: "analysis_period"
         - data:
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
-          header: "{}"
+          header:
+            unit: "unit"
+            data_type: "data_type"
+            location:
+              elevation: 1.46581298050294517310021547018550336360931396484375
+              city: "city"
+              latitude: -75.5850925717017929628127603791654109954833984375
+              time_zone: "time_zone"
+              longitude: 36.98842259053452607986400835216045379638671875
+            analysis_period: "analysis_period"
         header:
         - "header"
         - "header"
@@ -6926,8 +7394,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6943,7 +7415,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -6958,7 +7430,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         child_surfaces:
@@ -6977,8 +7449,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -6994,7 +7470,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -7009,7 +7485,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
         - rad_properties:
@@ -7027,8 +7503,12 @@ definitions:
                 modifier: "void"
             uuid: "uuid"
           vertices:
-          - ""
-          - ""
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
+          - x: 6.02745618307040320615897144307382404804229736328125
+            y: 1.46581298050294517310021547018550336360931396484375
+            z: 5.962133916683182377482808078639209270477294921875
           name: "name"
           surface_states:
           - surface_properties:
@@ -7044,7 +7524,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           - surface_properties:
               rad_properties:
@@ -7059,7 +7539,7 @@ definitions:
                   specularity: 0.01
                   roughness: 0.03
                   modifier: "void"
-              surface_type: 3.61647370984224192369538286584429442882537841796875
+              surface_type: 3.382425993979996992067071914789266884326934814453125
             name: "name"
           surface_type: 0.48049691427660690123957465402781963348388671875
       uuid: "uuid"
@@ -7153,14 +7633,23 @@ definitions:
         diffuse_horizontal_radiation:
           data:
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
-          header: "{}"
+          header:
+            unit: "unit"
+            data_type: "data_type"
+            location:
+              elevation: 1.46581298050294517310021547018550336360931396484375
+              city: "city"
+              latitude: -75.5850925717017929628127603791654109954833984375
+              time_zone: "time_zone"
+              longitude: 36.98842259053452607986400835216045379638671875
+            analysis_period: "analysis_period"
         header:
         - "header"
         - "header"
@@ -7173,14 +7662,23 @@ definitions:
         direct_normal_radiation:
           data:
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
           - standard: "SI"
-            datetime: "datetime"
+            datetime: "2000-01-23T04:56:07.000+00:00"
             nickname: "nickname"
             value: 5.962133916683182377482808078639209270477294921875
-          header: "{}"
+          header:
+            unit: "unit"
+            data_type: "data_type"
+            location:
+              elevation: 1.46581298050294517310021547018550336360931396484375
+              city: "city"
+              latitude: -75.5850925717017929628127603791654109954833984375
+              time_zone: "time_zone"
+              longitude: 36.98842259053452607986400835216045379638671875
+            analysis_period: "analysis_period"
         location:
           elevation: 1.46581298050294517310021547018550336360931396484375
           city: "city"
@@ -7217,14 +7715,6 @@ definitions:
     example:
       indirect_value: 3.61607674925191080461672754609026014804840087890625
       direct_value: 9.301444243932575517419536481611430644989013671875
-  VertexSchema_inner:
-    properties:
-      x:
-        type: "number"
-      y:
-        type: "number"
-      z:
-        type: "number"
 parameters:
   GridNameParameter:
     name: "grid_name"
@@ -7232,18 +7722,17 @@ parameters:
     description: "The name of the grid"
     required: false
     type: "string"
-  MinPointsParameter:
-    name: "min_points"
+  SimulationStatusParameter:
+    name: "simulation_status"
     in: "query"
-    description: "The minimum amount of points the analysis grid has"
+    description: "Status of the simulation for this grid"
     required: false
-    type: "integer"
-  MaxPointsParameter:
-    name: "max_points"
-    in: "query"
-    description: "The maximum amount of points the analysis grid has"
-    required: false
-    type: "integer"
+    type: "string"
+    enum:
+    - "waiting"
+    - "running"
+    - "complete"
+    - "failed"
   CountryParameter:
     name: "country"
     in: "query"

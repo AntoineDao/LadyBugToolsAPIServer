@@ -15,13 +15,13 @@ class DataTypeSchema(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, value: float=None, _datetime: str=None, standard: str=None, nickname: str=None):  # noqa: E501
+    def __init__(self, value: float=None, datetime: datetime=None, standard: str=None, nickname: str=None):  # noqa: E501
         """DataTypeSchema - a model defined in Swagger
 
         :param value: The value of this DataTypeSchema.  # noqa: E501
         :type value: float
-        :param _datetime: The _datetime of this DataTypeSchema.  # noqa: E501
-        :type _datetime: str
+        :param datetime: The datetime of this DataTypeSchema.  # noqa: E501
+        :type datetime: datetime
         :param standard: The standard of this DataTypeSchema.  # noqa: E501
         :type standard: str
         :param nickname: The nickname of this DataTypeSchema.  # noqa: E501
@@ -29,20 +29,20 @@ class DataTypeSchema(Model):
         """
         self.swagger_types = {
             'value': float,
-            '_datetime': str,
+            'datetime': datetime,
             'standard': str,
             'nickname': str
         }
 
         self.attribute_map = {
             'value': 'value',
-            '_datetime': 'datetime',
+            'datetime': 'datetime',
             'standard': 'standard',
             'nickname': 'nickname'
         }
 
         self._value = value
-        self.__datetime = _datetime
+        self._datetime = datetime
         self._standard = standard
         self._nickname = nickname
 
@@ -81,27 +81,27 @@ class DataTypeSchema(Model):
         self._value = value
 
     @property
-    def _datetime(self) -> str:
-        """Gets the _datetime of this DataTypeSchema.
+    def datetime(self) -> datetime:
+        """Gets the datetime of this DataTypeSchema.
 
 
-        :return: The _datetime of this DataTypeSchema.
-        :rtype: str
+        :return: The datetime of this DataTypeSchema.
+        :rtype: datetime
         """
-        return self.__datetime
+        return self._datetime
 
-    @_datetime.setter
-    def _datetime(self, _datetime: str):
-        """Sets the _datetime of this DataTypeSchema.
+    @datetime.setter
+    def datetime(self, datetime: datetime):
+        """Sets the datetime of this DataTypeSchema.
 
 
-        :param _datetime: The _datetime of this DataTypeSchema.
-        :type _datetime: str
+        :param datetime: The datetime of this DataTypeSchema.
+        :type datetime: datetime
         """
-        if _datetime is None:
-            raise ValueError("Invalid value for `_datetime`, must not be `None`")  # noqa: E501
+        if datetime is None:
+            raise ValueError("Invalid value for `datetime`, must not be `None`")  # noqa: E501
 
-        self.__datetime = _datetime
+        self._datetime = datetime
 
     @property
     def standard(self) -> str:

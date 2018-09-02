@@ -22,8 +22,7 @@ class TestAnalysisGridController(BaseTestCase):
         Get a list of analysis_grid objects
         """
         query_string = [('grid_name', 'grid_name_example'),
-                        ('min_points', 56),
-                        ('max_points', 56)]
+                        ('simulation_status', 'simulation_status_example')]
         response = self.client.open(
             '/api/analysis_grid',
             method='GET',

@@ -9,17 +9,15 @@ from swagger_server.models.succesfully_created_schema import SuccesfullyCreatedS
 from swagger_server import util
 
 
-def analysis_grid_get(grid_name=None, min_points=None, max_points=None):  # noqa: E501
+def analysis_grid_get(grid_name=None, simulation_status=None):  # noqa: E501
     """Get a list of analysis_grid objects
 
     Retrieves a list of analysis grids for a given filter. # noqa: E501
 
     :param grid_name: The name of the grid
     :type grid_name: str
-    :param min_points: The minimum amount of points the analysis grid has
-    :type min_points: int
-    :param max_points: The maximum amount of points the analysis grid has
-    :type max_points: int
+    :param simulation_status: Status of the simulation for this grid
+    :type simulation_status: str
 
     :rtype: InlineResponse200
     """
