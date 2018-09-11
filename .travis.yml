@@ -9,3 +9,16 @@ python:
 install: "pip install -r test-requirements.txt"
 # command to run tests
 script: nosetests
+
+services:
+  - postgresql
+
+env:
+  - DB_USER='postgres'
+  - PASSWORD=''
+  - SERVER_IP='localhost'
+  - PORT='5432'
+  - DATABASE_NAME='ladybugtools'
+
+before_script:
+  - psql -c 'create database test;' -U postgres
